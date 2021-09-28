@@ -1,0 +1,16 @@
+version: "2.1"
+services:
+  tubesync:
+     image: ghcr.io/meeb/tubesync:v0.9.1
+     container_name: tubesync
+     network_mode: host
+     restart: always
+     ports:
+       - 4848:4848
+     volumes:
+       - /mnt/share/LocalData/backups/tubesync/config:/config
+       - /mnt/share/LocalData/backups/tubesync/downloads:/downloads
+     environment:
+       - TZ=Australia/Melbourne
+       - PUID=1000
+       - PGID=1000
