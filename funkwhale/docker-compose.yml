@@ -5,20 +5,24 @@ services:
     restart: unless-stopped
     # change version number here when you want to do an upgrade
     image: funkwhale/all-in-one:1.1.4
+    expose:
+      - 80
     environment:
       # adapt to the pid/gid that own /srv/funkwhale/data
       - PUID=1000
       - PGID=1000
       # Replace 'your.funkwhale.example' with your actual domain
+      - VIRTUAL_HOST=funkwhale.waller.rocks
       - FUNKWHALE_HOSTNAME=funkwhale.waller.rocks
       # Protocol may also be: http
-      - FUNKWHALE_PROTOCOL=https
+      - FUNKWHALE_PROTOCOL=http
       # This limits the upload size
       - NGINX_MAX_BODY_SIZE=100M
       # Bind to localhost
       - FUNKWHALE_API_IP=127.0.0.1
       # Container port you want to expose on the host
       - FUNKWHALE_API_PORT=5000
+      #- FUNKWHALE_API_PORT=443
       # Generate and store a secure secret key for your instance
       - DJANGO_SECRET_KEY=aa80e7d76a2fea4ed0ca73bd217e19d65176b45bdb
       # Remove this if you expose the container directly on ports 80/443
@@ -26,5 +30,7 @@ services:
     volumes:
       - /mnt/share/CloudData/configs/funkwhale/:/data
       - /mnt/share/CloudData/Media/Music/:/music:ro
-    ports:
-      - "5000:80"
+networks:
+  default:
+    external:
+      name: nginx-proxy

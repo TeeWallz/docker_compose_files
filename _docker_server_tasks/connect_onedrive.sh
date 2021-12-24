@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Prerequise: unzip
+sudo su
+
+apt install unzip
+
+cd /tmp
+wget -O rclone-current-linux-amd64.zip https://downloads.rclone.org/rclone-current-linux-amd64.zip
+unzip rclone-current-linux-amd64.zip
+cp rclone-v*/rclone /usr/sbin; rm -rf rclone*
+mkdir ~/.config
+mkdir ~/.config/rclone
+cat > ~/.config/rclone/rclone.conf << EOF
+[onedrive]
+type = onedrive
+token = {"access_token":"EwCAA8l6BAAUwihrrCrmQ4wuIJX5mbj7rQla6TUAARLOLyZnMk96vKQcGMfL1cag0n+H2YQn1wTxVY3GL7R9+vc9MvnQg1qzGQ8Eqz4G7kO/Vt/UudQdATzhfhr9VR7SPnYXOp2nSW/otJ6Jfc4iHtD3cwa5SCn+KP7+XXRLu4ZWjKEeye1pJJY8InRDNJRK6Fi4eJERVQKX7+Rv46QVpBUIEZ+uu6lpnG25oF9vXGjmu0t1/DqG1aXUI3/aewIFIDx1nGD/C0+jfUkgU7qcpW4fJXittuEAB6UywJjpVHAjncaXQcwfWqZQRxEAedAeGo0IITyeb1IU/2sMMtf4rhhyuxGJeK1zVNGW4Bbk4hzS+SLmln8mRRfGxdovGhcDZgAACAuBtISGwbxsUAKwyeCyjZmAJtqcDaqBhdjqQ8tv1PCXdVRvP28HUfJhURCmamsheL0uCD6XoFI/+s5Rkmi+qKN0eOBbVPcs6CAf/gjHk1M3b4TItC2MyE2jvtlC59QrAGZ1fSOVuszcBCjsfU/dV14ysNoS+4XZ1zh/OqM6NCX5zX4T7yUtWBjLByzh8BbHk8nmPqeckhog6KxdJVvxuoClcwQ0QQDj3aOILI2H76ZIj+lR80bHdAhtPwo4fbeD1hJsmBSW7ztHRcYBFWRN7G0T073Cj8BROIRzCRgnXmSu1c0w3PCjMLUSdvbNzYIsHnAzr8j2rfhZ8M2nuM4Yv+PZZ1Evm9+rwtuHrSxOi4G7M/dKbHwfaWb8k+wVDU9bCXdzJmf4BNL/ra/mqq2JWAnBGuCZL4vUCOlzwteNCrAXoT9r0ZasLOB7ZjVeMVRAApButz6pFIKkKp+1Qt/dvwcV0KUbK0uBs13xrET7nmGmeCFvIhj0Zb6hhBfdhZBYEOOdVkrcSnPjGu6Z3n6H5KyNomsoF80jDpZlb0LPyhgCAMJV/K9HnAhMZQ7yaDy5iE/T+g5Nk9YfTRq/abfmunh4/PZENpH5JfozCJHKxXTpO6r3BrvsMbrYhKnnNydc9lGw9ZncAdqo+kz5PGtVC7fUDPu04gB0sJotQxEAiO9T3gxz2YXTy7GhLnvDI2rt+EPX7r8RAIIVLqNrFrisjx+h99NVFz0dM3NUH2D0JKnfweDuYCx5zr3Xqndb9ZgBFMkpUkWlt2QS9xHPAgmzIetPnHrxeMZMjaxYiQI=","token_type":"Bearer","refresh_token":"M.R3_BL2.-CYS5aXlsDns0PmwJLo5OqU3fkN*0f7KIQFh7cfrCaO0xkF0!OIaA7jsiLu7HPnK7TsqHS6kBf8xibE7vTqsCEniE!6CX*YbXFz8ckjn*6*6JAWAMCPPa3uOCUaDjpxb5Z!WjFI7C*Fk7yFHqJ1JfiC0QX1WH9PHnK*fLx8kC9OaX9XJ*VXUx!jJBD7Plc*DXMZsfr2dT2xwEyCcirtL710RJR3pNeYTlSRwkHA2Bcv2c1azjgydGj3ft8VsabRR94xOkKxVaPadH2dGlna6TWdc5YNz7c69i0p6m6Q3paeBFdI2xUUleHub1Lm1et8wG!rUUbfG07VV9u7AK8HJ*Jw4$","expiry":"2021-10-05T23:01:39.057514313+11:00"}
+drive_id = b6a3ef0a7d1ad7b
+drive_type = personal
+
+EOF

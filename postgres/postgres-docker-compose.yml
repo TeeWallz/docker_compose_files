@@ -1,0 +1,32 @@
+version: '3'
+services:
+  database:
+    image: "postgres" # use latest official postgres version
+    restart: always
+    #    env_file:
+    #      - database.env # configure postgres
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - database-data:/var/lib/postgresql/data/ # persist data even if container shuts down
+
+    pg_backup_s3:
+      image: eeshugerman/postgres-backup-s3:13
+      environment:
+        SCHEDULE: '@weekly'
+        PASSPHRASE: passphrase
+        S3_REGION: ap-southeast-2
+        S3_ACCESS_KEY_ID: ${S3_KEY}
+        S3_SECRET_ACCESS_KEY: ${S3_SECRET}
+        S3_BUCKET: tomw-lightsail-docker
+        S3_PREFIX: backup
+        POSTGRES_HOST: postgres
+        POSTGRES_DATABASE: ${POSTGRES_DB}
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+volumes:
+  database-data: # named volumes can be managed easier using docker-compose

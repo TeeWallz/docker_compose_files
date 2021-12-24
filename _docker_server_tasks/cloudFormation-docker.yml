@@ -1,0 +1,138 @@
+Description: AWS CloudFormation Template to create LightSail Instance with Docker and Postgres
+Parameters:
+  HomeIpParameter:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: HomeIp
+Resources:
+  LightSailDockerInstance:
+    Type: 'AWS::Lightsail::Instance'
+    Properties:
+      BlueprintId: ubuntu_20_04
+      BundleId: micro_2_2
+      InstanceName: Docker
+      Networking:
+        Ports:
+          - CommonName: HomeAccess
+            AccessDirection: inbound
+            AccessFrom:
+              Ref: HomeIpParameter
+            Cidrs:
+              - Ref: HomeIpParameter
+            FromPort: 0
+            ToPort: 65535
+            Protocol: all
+          - CommonName: LightsailConnectAccess
+            CidrListAliases: 
+              - lightsail-connect
+            Protocol: tcp
+            FromPort: 22
+            ToPort: 22
+      UserData: !Sub |
+        mkdir /opt/secrets
+        echo "Yeet, my good sir" > /opt/secrets/yeet
+        echo '{"ACCESS_KEY":"${PostgresBackupUserCredentials}","SECRET_KEY":"${PostgresBackupUserCredentials.SecretAccessKey}"}' > /opt/secrets/pass
+        echo "Running update" >> /var/log/setup.log
+        apt-get -y update >> /var/log/setup.log
+
+        apt install docker.io  -y >> /var/log/setup.log
+        echo "apt install docker.io" >> /var/log/setup.log
+
+        groupadd docker
+        usermod -aG docker $USER
+        newgrp docker 
+        echo "Groups done" >> /var/log/setup.log
+
+        docker volume create portainer_data >> /var/log/setup.log
+        docker run -d -p 8000:8000 -p 9443:9443 --name portainer \
+          --restart=always \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v portainer_data:/data \
+          cr.portainer.io/portainer/portainer-ce:2.9.3  >> /var/log/setup.log
+        echo "Docker done" >> /var/log/setup.log
+
+        echo POSTGRES_USER=root >> ~/.env
+        echo POSTGRES_PASSWORD=root >> ~/.env
+        echo POSTGRES_DB=site-data >> ~/.env
+        echo S3_KEY=${PostgresBackupUserCredentials} >> ~/.env
+        echo S3_SECRET=${PostgresBackupUserCredentials.SecretAccessKey} >> ~/.env
+        echo "~/.env:"
+        cat ~/.env
+        
+
+        cd ~/
+        git clone git@github.com:TeeWallz/docker_compose_files.git
+        cd docker_compose_files
+        docker-compose --env-file ~/.env up 
+
+
+  LightSailDockerInstanceStaticIp:
+    Type: 'AWS::Lightsail::StaticIp'
+    Properties:
+        AttachedTo: Docker
+        StaticIpName: DockerIp
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 44b3290b-1206-45e3-8395-c43b8c2cc440
+    DependsOn:
+      - LightSailDockerInstance
+  
+  # S3 Bucket
+  # LightSailDockerInstanceBucket:
+  #   DeletionPolicy: Retain
+  #   UpdateReplacePolicy: Retain
+  #   Type: AWS::S3::Bucket
+  #   Properties:
+  #     BucketName: tomw-lightsail-docker
+  #   DependsOn:
+  #     - LightSailDockerInstance
+  
+  # IAM Role Policies
+  RootInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref S3WritableRole
+  S3WritableRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+  RolePolicies:
+    Type: AWS::IAM::Policy
+    DependsOn:
+      - LightSailDockerInstance
+    Properties:
+      PolicyName: LightSailDockerInstancePolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: 's3:*'
+            Resource: '*'
+      Roles:
+        - !Ref S3WritableRole
+
+  PostgresBackupUser:
+    Type: AWS::IAM::User
+    Properties:
+      Path: /PostgresBackupUser/
+      UserName: !Ref AWS::StackName
+
+  PostgresBackupUserCredentials:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      Status: Active
+      UserName: !Ref PostgresBackupUser
+
+  PostgresBackupUserCredentialsStored:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub /PostgresBackupUser/credentials/${PostgresBackupUser}
+      SecretString: !Sub '{"ACCESS_KEY":"${PostgresBackupUserCredentials}","SECRET_KEY":"${PostgresBackupUserCredentials.SecretAccessKey}"}'

@@ -1,0 +1,8 @@
+expose:
+  - 80
+
+
+networks:
+  default:
+    external:
+      name: nginx-proxy
