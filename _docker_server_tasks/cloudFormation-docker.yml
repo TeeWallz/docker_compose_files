@@ -28,42 +28,7 @@ Resources:
             FromPort: 22
             ToPort: 22
       UserData: !Sub |
-        mkdir /opt/secrets
-        echo "Yeet, my good sir" > /opt/secrets/yeet
-        echo '{"ACCESS_KEY":"${PostgresBackupUserCredentials}","SECRET_KEY":"${PostgresBackupUserCredentials.SecretAccessKey}"}' > /opt/secrets/pass
-        echo "Running update" >> /var/log/setup.log
-        apt-get -y update >> /var/log/setup.log
-
-        apt install docker.io  -y >> /var/log/setup.log
-        echo "apt install docker.io" >> /var/log/setup.log
-
-        groupadd docker
-        usermod -aG docker $USER
-        newgrp docker 
-        echo "Groups done" >> /var/log/setup.log
-
-        docker volume create portainer_data >> /var/log/setup.log
-        docker run -d -p 8000:8000 -p 9443:9443 --name portainer \
-          --restart=always \
-          -v /var/run/docker.sock:/var/run/docker.sock \
-          -v portainer_data:/data \
-          cr.portainer.io/portainer/portainer-ce:2.9.3  >> /var/log/setup.log
-        echo "Docker done" >> /var/log/setup.log
-
-        echo POSTGRES_USER=root >> ~/.env
-        echo POSTGRES_PASSWORD=root >> ~/.env
-        echo POSTGRES_DB=site-data >> ~/.env
-        echo S3_KEY=${PostgresBackupUserCredentials} >> ~/.env
-        echo S3_SECRET=${PostgresBackupUserCredentials.SecretAccessKey} >> ~/.env
-        echo "~/.env:"
-        cat ~/.env
-        
-
-        cd ~/
-        git clone git@github.com:TeeWallz/docker_compose_files.git
-        cd docker_compose_files
-        docker-compose --env-file ~/.env up 
-
+        wget -O - https://raw.githubusercontent.com/TeeWallz/docker_compose_files/main/_docker_server_tasks/setup_docker_server.sh | bash >> /var/log/setup.log  2>&1
 
   LightSailDockerInstanceStaticIp:
     Type: 'AWS::Lightsail::StaticIp'
