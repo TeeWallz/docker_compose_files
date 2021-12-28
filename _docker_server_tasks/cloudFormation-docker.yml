@@ -28,16 +28,58 @@ Resources:
             FromPort: 22
             ToPort: 22
       UserData: !Sub |
-        wget -O - https://raw.githubusercontent.com/TeeWallz/docker_compose_files/main/_docker_server_tasks/setup_docker_server.sh | bash >> /var/log/setup.log  2>&1
+        # wget -O - https://raw.githubusercontent.com/TeeWallz/docker_compose_files/main/_docker_server_tasks/setup_docker_server.sh | bash >> /var/log/setup.log  2>&1
+        mkdir /opt/secrets
+        echo "Yeet, my good sir" > /opt/secrets/yeet
+        echo '{"ACCESS_KEY":"${PostgresBackupUserCredentials}","SECRET_KEY":"${PostgresBackupUserCredentials.SecretAccessKey}"}' > /opt/secrets/pass
+
+        echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDC0dO+ypr7l4CdDnx374vLZoaGzmHk1KFyZgeutCV7H8EuOe+5RsZeNGesEjOCdRSa0qM9io0W/ShZzt4KEZAswZqVf9I2z//SiCQMRCldeH9hvYcY+cP6rQq/LsuBfr7CEQtGCN9ZGw2mIKF+2uHFaiQeUT1dNydu9TgzA6JD7cguvHPRq4lHd3BeLROkr1qP8e7l3EpVkRgsF5fb215oQnzkfnXw9cGrnEo4eA0H6eGcHdGjeufKz+Uokr5jpjdkjwie+1E1v13Yk+TahjBKXNG9MD0p7pTvSJRFiAdvxS6ebd2g3PnIR1/h9AJ3pQ5TbwlSNqHOhXnXH7Gm3PckRrf64+pjjJ9FfVOGcGYXyyZ+UnEhtdSUK5523AlnfxQQKBmIXaKL2xR5taxJ3Ol0Wi8yYX+nMN9hX8T01BNkzSJ+KBDaZ8qRPtT8jMfVZkLbtP3K30/0zre0XVrh4j3ewmgqdz68aby4nq0qJcfkjPq2+ElyKxrv4CVLpeLf0YM= tom@tom-xps" >> /home/ubuntu/.ssh/authorized_keys
+
+        echo "Running update" >> /var/log/setup.log
+        apt-get -y update >> /var/log/setup.log
+
+        apt install docker.io  -y >> /var/log/setup.log
+        echo "apt install docker.io" >> /var/log/setup.log
+
+        groupadd docker
+        usermod -aG docker $USER
+        newgrp docker 
+        echo "Groups done" >> /var/log/setup.log
+
+        echo "Getting docker compose" >> /var/log/setup.log
+        curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose  >> /var/log/setup.log 2>&1
+        chmod +x /usr/local/bin/docker-compose
+
+        docker volume create portainer_data >> /var/log/setup.log
+        docker run -d -p 8000:8000 -p 9443:9443 --name portainer \
+          --restart=always \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v portainer_data:/data \
+          cr.portainer.io/portainer/portainer-ce:2.9.3  >> /var/log/setup.log
+        echo "Docker done" >> /var/log/setup.log     
+        
+        mkdir /opt/setup
+        cd /opt/setup
+        git clone git@github.com:TeeWallz/docker_compose_files.git >> /var/log/setup.log  
+        cd docker_compose_files/postgres
+
+        echo POSTGRES_USER=root >> .env
+        echo POSTGRES_PASSWORD=root >> .env
+        echo POSTGRES_DB=site-data >> .env
+        echo S3_PG_BACKUP_KEY=${PostgresBackupUserCredentials} >> .env
+        echo S3_PG_BACKUP_SECRET=${PostgresBackupUserCredentials.SecretAccessKey} >> .env
+        echo ".env:"  >> /var/log/setup.log  
+        cat .env >> /var/log/setup.log  
+        
+        echo "Running docker compose" >> /var/log/setup.log  
+        docker-compose --env-file .env up  >> /var/log/setup.log  2>&1
+
 
   LightSailDockerInstanceStaticIp:
     Type: 'AWS::Lightsail::StaticIp'
     Properties:
         AttachedTo: Docker
         StaticIpName: DockerIp
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 44b3290b-1206-45e3-8395-c43b8c2cc440
     DependsOn:
       - LightSailDockerInstance
   
@@ -97,7 +139,26 @@ Resources:
       UserName: !Ref PostgresBackupUser
 
   PostgresBackupUserCredentialsStored:
-    Type: AWS::SecretsManager::Secret
+    Type: AWS::SSM::Parameter
     Properties:
       Name: !Sub /PostgresBackupUser/credentials/${PostgresBackupUser}
-      SecretString: !Sub '{"ACCESS_KEY":"${PostgresBackupUserCredentials}","SECRET_KEY":"${PostgresBackupUserCredentials.SecretAccessKey}"}'
+      Type: String
+      Value: !Sub '{"ACCESS_KEY":"${PostgresBackupUserCredentials}","SECRET_KEY":"${PostgresBackupUserCredentials.SecretAccessKey}"}'
+
+  
+  LightSailDockerInstanceStaticIpStored:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /docker/static_ip
+      Type: String
+      Value: !GetAtt LightSailDockerInstanceStaticIp.IpAddress
+
+  dockerDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId : Z0466805M9YXQ5NUCVE5
+      Name: docker.tomekwaller.com
+      ResourceRecords:
+      - !GetAtt LightSailDockerInstanceStaticIp.IpAddress
+      TTL: 60
+      Type: A
