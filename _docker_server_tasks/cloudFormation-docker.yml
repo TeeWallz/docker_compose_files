@@ -52,16 +52,21 @@ Resources:
 
         docker volume create portainer_data >> /var/log/setup.log
         docker run -d -p 8000:8000 -p 9443:9443 --name portainer \
-          --restart=always \
+          --restart=always \d
           -v /var/run/docker.sock:/var/run/docker.sock \
           -v portainer_data:/data \
           cr.portainer.io/portainer/portainer-ce:2.9.3  >> /var/log/setup.log
         echo "Docker done" >> /var/log/setup.log     
         
         mkdir /opt/setup
-        cd /opt/setup
-        git clone git@github.com:TeeWallz/docker_compose_files.git >> /var/log/setup.log  
-        cd docker_compose_files/postgres
+        cd /opt/setup/
+        
+        echo "Cloning docker repo" >> /var/log/setup.log
+        git clone https://github.com/TeeWallz/docker_compose_files.git /opt/setup/docker_compose_files >> /var/log/setup.log  
+        echo "Done cloning docker repo?" >> /var/log/setup.log
+        cd /opt/setup/docker_compose_files/postgres >> /var/log/setup.log  2>&1
+        pwd  >> /var/log/setup.log  2>&1
+        ls  >> /var/log/setup.log  2>&1
 
         echo POSTGRES_USER=root >> .env
         echo POSTGRES_PASSWORD=root >> .env
@@ -70,9 +75,15 @@ Resources:
         echo S3_PG_BACKUP_SECRET=${PostgresBackupUserCredentials.SecretAccessKey} >> .env
         echo ".env:"  >> /var/log/setup.log  
         cat .env >> /var/log/setup.log  
+
+        pwd >> /var/log/setup.log  2>&1  
+        ls >> /var/log/setup.log  2>&1 
         
         echo "Running docker compose" >> /var/log/setup.log  
-        docker-compose --env-file .env up  >> /var/log/setup.log  2>&1
+        cd /opt/setup/docker_compose_files/postgres && docker-compose --env-file .env up  >> /var/log/setup.log  2>&1
+        ufw allow 54322/tcp
+
+        
 
 
   LightSailDockerInstanceStaticIp:
