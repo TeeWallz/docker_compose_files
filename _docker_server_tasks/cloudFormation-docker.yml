@@ -9,7 +9,6 @@ Parameters:
   PostgresPasswordParameter:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /docker/postgres_password
-  PostgresPasswordParameter:
 Resources:
   LightSailDockerInstance:
     Type: 'AWS::Lightsail::Instance'
