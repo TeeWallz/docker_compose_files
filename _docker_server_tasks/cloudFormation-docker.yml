@@ -129,19 +129,22 @@ Resources:
             Action: sts:AssumeRole
       Path: /
   RolePolicies:
-    Type: AWS::IAM::Policy
-    DependsOn:
-      - LightSailDockerInstance
+    Type: "AWS::IAM::ManagedPolicy"
     Properties:
-      PolicyName: LightSailDockerInstancePolicy
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Action: 's3:*'
-            Resource: '*'
+      ManagedPolicyName: 'docker-RolePolicies'
       Roles:
-        - !Ref S3WritableRole
+        - Ref: "S3WritableRole"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:       
+        - Effect: Allow
+          Action:
+          - s3:Get*
+          - s3:Put*
+          - s3:List*
+          - s3:AbortMultipartUpload    
+          Resource:
+          - arn:aws:s3:::tomw-lightsail-docker-backup/*
 
   PostgresBackupUser:
     Type: AWS::IAM::User
