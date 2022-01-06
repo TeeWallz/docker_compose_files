@@ -76,7 +76,7 @@ Resources:
 
         echo POSTGRES_USER=${PostgresUserParameter} >> .env
         echo POSTGRES_PASSWORD=${PostgresPasswordParameter} >> .env
-        echo POSTGRES_DB=site-data >> .env
+        echo POSTGRES_DB=site_data >> .env
         echo S3_PG_BACKUP_KEY=${PostgresBackupUserCredentials} >> .env
         echo S3_PG_BACKUP_SECRET=${PostgresBackupUserCredentials.SecretAccessKey} >> .env
         echo ".env:"  >> /var/log/setup.log  
@@ -151,19 +151,19 @@ Resources:
     Properties:
       Path: /PostgresBackupUser/
       UserName: !Ref AWS::StackName
-    Policies:
-    - PolicyName: AllowS3Access
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:       
-        - Effect: Allow
-          Action:
-          - s3:Get*
-          - s3:Put*
-          - s3:List*
-          - s3:AbortMultipartUpload    
-          Resource:
-          - arn:aws:s3:::tomw-lightsail-docker-backup/*
+      Policies:
+      - PolicyName: AllowS3Access
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:       
+          - Effect: Allow
+            Action:
+            - s3:Get*
+            - s3:Put*
+            - s3:List*
+            - s3:AbortMultipartUpload    
+            Resource:
+            - arn:aws:s3:::tomw-lightsail-docker-backup/*
 
   PostgresBackupUserCredentials:
     Type: AWS::IAM::AccessKey
