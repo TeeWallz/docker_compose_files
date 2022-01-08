@@ -35,6 +35,8 @@ Resources:
             ToPort: 22
       UserData: !Sub |
         # wget -O - https://raw.githubusercontent.com/TeeWallz/docker_compose_files/main/_docker_server_tasks/setup_docker_server.sh | bash >> /var/log/setup.log  2>&1
+        ufw allow 54322/tcp
+        
         mkdir /opt/secrets
         echo "Yeet, my good sir" > /opt/secrets/yeet
         echo '{"ACCESS_KEY":"${PostgresBackupUserCredentials}","SECRET_KEY":"${PostgresBackupUserCredentials.SecretAccessKey}"}' > /opt/secrets/pass
@@ -76,7 +78,7 @@ Resources:
 
         echo POSTGRES_USER=${PostgresUserParameter} >> .env
         echo POSTGRES_PASSWORD=${PostgresPasswordParameter} >> .env
-        echo POSTGRES_DB=site_data >> .env
+        echo POSTGRES_DB=pokemon-site >> .env
         echo S3_PG_BACKUP_KEY=${PostgresBackupUserCredentials} >> .env
         echo S3_PG_BACKUP_SECRET=${PostgresBackupUserCredentials.SecretAccessKey} >> .env
         echo ".env:"  >> /var/log/setup.log  
@@ -85,9 +87,25 @@ Resources:
         pwd >> /var/log/setup.log  2>&1  
         ls >> /var/log/setup.log  2>&1 
         
+        mkdir /opt/scripts 2>&1
+        printf '#!/bin/bash\ndocker exec postgres_pg_backup_s3_1 sh backup.sh' >> /opt/scripts/backup_sql.sh 2>&1
+        printf '#!/bin/bash\ndocker exec postgres_pg_backup_s3_1 sh restore.sh' >> /opt/scripts/restore_sql.sh 2>&1
+        printf '#!/bin/bash\ndocker exec -it postgres_pg_backup_s3_1 sh' >> /opt/scripts/shell_sql.sh 2>&1
+        chmod +x /opt/scripts/backup_sql.sh >> /opt/scripts/backup_sql.sh 2>&1
+        chmod +x /opt/scripts/restore_sql.sh >> /opt/scripts/backup_sql.sh 2>&1
+        chmod +x /opt/scripts/shell_sql.sh >> /opt/scripts/backup_sql.sh 2>&1
+
         echo "Running docker compose" >> /var/log/setup.log  
-        cd /opt/setup/docker_compose_files/postgres && docker-compose --env-file .env up  >> /var/log/setup.log  2>&1
-        ufw allow 54322/tcp
+        cd /opt/setup/docker_compose_files/postgres
+        docker-compose --env-file .env up & >> /var/log/setup.log  2>&1
+
+        echo "Sleeping 60. Waiting for docker." >> /var/log/setup.log  
+        sleep 60
+        echo "Restoring pokemon-site" >> /var/log/setup.log  
+        docker exec postgres_pg_backup_s3_1 sh restore.sh >> /var/log/setup.log    2>&1
+        echo "Done restoring pokemon-site" >> /var/log/setup.log  
+
+
 
         
 
@@ -111,41 +129,6 @@ Resources:
   #     - LightSailDockerInstance
   
   # IAM Role Policies
-  RootInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Path: /
-      Roles:
-        - !Ref S3WritableRole
-  S3WritableRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
-            Action: sts:AssumeRole
-      Path: /
-  RolePolicies:
-    Type: "AWS::IAM::ManagedPolicy"
-    Properties:
-      ManagedPolicyName: 'docker-RolePolicies'
-      Roles:
-        - Ref: "S3WritableRole"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:       
-        - Effect: Allow
-          Action:
-          - s3:Get*
-          - s3:Put*
-          - s3:List*
-          - s3:AbortMultipartUpload    
-          Resource:
-          - arn:aws:s3:::tomw-lightsail-docker-backup/*
-
   PostgresBackupUser:
     Type: AWS::IAM::User
     Properties:
@@ -155,15 +138,19 @@ Resources:
       - PolicyName: AllowS3Access
         PolicyDocument:
           Version: "2012-10-17"
-          Statement:       
-          - Effect: Allow
+          Statement:
+          - Sid: ListObjectsInBucket
+            Effect: Allow
             Action:
-            - s3:Get*
-            - s3:Put*
-            - s3:List*
-            - s3:AbortMultipartUpload    
+            - s3:ListBucket
+            Resource:
+            - arn:aws:s3:::tomw-lightsail-docker-backup
+          - Sid: AllObjectActions
+            Effect: Allow
+            Action: s3:*Object
             Resource:
             - arn:aws:s3:::tomw-lightsail-docker-backup/*
+
 
   PostgresBackupUserCredentials:
     Type: AWS::IAM::AccessKey

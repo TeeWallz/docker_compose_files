@@ -10,5 +10,5 @@ aws cloudformation delete-stack --stack-name $stack_name
 aws cloudformation wait stack-delete-complete --stack-name $stack_name
 aws cloudformation create-stack --stack-name $stack_name \
                                 --template-url https://tomw-cf-templates.s3.ap-southeast-2.amazonaws.com/cloudFormation-docker.yml \
-                                --capabilities CAPABILITY_NAMED_IAM
+                                --capabilities CAPABILITY_NAMED_IAM > /dev/null
 aws cloudformation wait stack-create-complete --stack-name $stack_name
