@@ -1,6 +1,6 @@
 
 # Shell into
-    docker exec -it <mycontainer> bash
+    docker exec -it postgres_pg_backup_s3_1 bash
 
 
 # Backup

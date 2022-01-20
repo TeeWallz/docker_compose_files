@@ -35,47 +35,48 @@ Resources:
             ToPort: 22
       UserData: !Sub |
         # wget -O - https://raw.githubusercontent.com/TeeWallz/docker_compose_files/main/_docker_server_tasks/setup_docker_server.sh | bash >> /var/log/setup.log  2>&1
-        ufw allow 54322/tcp
         
-        mkdir /opt/secrets
-        echo "Yeet, my good sir" > /opt/secrets/yeet
-        echo '{"ACCESS_KEY":"${PostgresBackupUserCredentials}","SECRET_KEY":"${PostgresBackupUserCredentials.SecretAccessKey}"}' > /opt/secrets/pass
-
+        # Networking
+        ufw allow 54322/tcp
         echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDC0dO+ypr7l4CdDnx374vLZoaGzmHk1KFyZgeutCV7H8EuOe+5RsZeNGesEjOCdRSa0qM9io0W/ShZzt4KEZAswZqVf9I2z//SiCQMRCldeH9hvYcY+cP6rQq/LsuBfr7CEQtGCN9ZGw2mIKF+2uHFaiQeUT1dNydu9TgzA6JD7cguvHPRq4lHd3BeLROkr1qP8e7l3EpVkRgsF5fb215oQnzkfnXw9cGrnEo4eA0H6eGcHdGjeufKz+Uokr5jpjdkjwie+1E1v13Yk+TahjBKXNG9MD0p7pTvSJRFiAdvxS6ebd2g3PnIR1/h9AJ3pQ5TbwlSNqHOhXnXH7Gm3PckRrf64+pjjJ9FfVOGcGYXyyZ+UnEhtdSUK5523AlnfxQQKBmIXaKL2xR5taxJ3Ol0Wi8yYX+nMN9hX8T01BNkzSJ+KBDaZ8qRPtT8jMfVZkLbtP3K30/0zre0XVrh4j3ewmgqdz68aby4nq0qJcfkjPq2+ElyKxrv4CVLpeLf0YM= tom@tom-xps" >> /home/ubuntu/.ssh/authorized_keys
-
+        
+        # Packages
         echo "Running update" >> /var/log/setup.log
         apt-get -y update >> /var/log/setup.log
-
         apt install docker.io  -y >> /var/log/setup.log
         echo "apt install docker.io" >> /var/log/setup.log
-
-        groupadd docker
-        usermod -aG docker $USER
-        newgrp docker 
-        echo "Groups done" >> /var/log/setup.log
-
+        
         echo "Getting docker compose" >> /var/log/setup.log
         curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose  >> /var/log/setup.log 2>&1
         chmod +x /usr/local/bin/docker-compose
+        echo "Done detting docker compose" >> /var/log/setup.log
 
+
+        # Docker
+        echo "Docker permissions" >> /var/log/setup.log 
+        groupadd docker
+        usermod -aG docker $USER
+        newgrp docker 
+        echo "Done docker permissions" >> /var/log/setup.log
+
+        echo "Creating portainer" >> /var/log/setup.log 
         docker volume create portainer_data >> /var/log/setup.log
         docker run -d -p 8000:8000 -p 9443:9443 --name portainer \
           --restart=always \d
           -v /var/run/docker.sock:/var/run/docker.sock \
           -v portainer_data:/data \
           cr.portainer.io/portainer/portainer-ce:2.9.3  >> /var/log/setup.log
-        echo "Docker done" >> /var/log/setup.log     
+        echo "Portainer done" >> /var/log/setup.log     
         
+
+        # Postgres Docker
+        echo "Cloning docker repo" >> /var/log/setup.log
         mkdir /opt/setup
         cd /opt/setup/
-        
-        echo "Cloning docker repo" >> /var/log/setup.log
         git clone https://github.com/TeeWallz/docker_compose_files.git /opt/setup/docker_compose_files >> /var/log/setup.log  
-        echo "Done cloning docker repo?" >> /var/log/setup.log
+        echo "Done cloning docker repo" >> /var/log/setup.log
+        
         cd /opt/setup/docker_compose_files/postgres >> /var/log/setup.log  2>&1
-        pwd  >> /var/log/setup.log  2>&1
-        ls  >> /var/log/setup.log  2>&1
-
         echo POSTGRES_USER=${PostgresUserParameter} >> .env
         echo POSTGRES_PASSWORD=${PostgresPasswordParameter} >> .env
         echo POSTGRES_DB=pokemon-site >> .env
@@ -83,27 +84,28 @@ Resources:
         echo S3_PG_BACKUP_SECRET=${PostgresBackupUserCredentials.SecretAccessKey} >> .env
         echo ".env:"  >> /var/log/setup.log  
         cat .env >> /var/log/setup.log  
-
-        pwd >> /var/log/setup.log  2>&1  
-        ls >> /var/log/setup.log  2>&1 
         
-        mkdir /opt/scripts 2>&1
-        printf '#!/bin/bash\ndocker exec postgres_pg_backup_s3_1 sh backup.sh' >> /opt/scripts/backup_sql.sh 2>&1
-        printf '#!/bin/bash\ndocker exec postgres_pg_backup_s3_1 sh restore.sh' >> /opt/scripts/restore_sql.sh 2>&1
-        printf '#!/bin/bash\ndocker exec -it postgres_pg_backup_s3_1 sh' >> /opt/scripts/shell_sql.sh 2>&1
-        chmod +x /opt/scripts/backup_sql.sh >> /opt/scripts/backup_sql.sh 2>&1
-        chmod +x /opt/scripts/restore_sql.sh >> /opt/scripts/backup_sql.sh 2>&1
-        chmod +x /opt/scripts/shell_sql.sh >> /opt/scripts/backup_sql.sh 2>&1
+        mkdir /opt/scripts
+        printf '#!/bin/bash\ndocker exec postgres_pg_backup_s3_1 sh backup.sh' >> /opt/scripts/backup_sql.sh
+        printf '#!/bin/bash\ndocker exec postgres_pg_backup_s3_1 sh restore.sh' >> /opt/scripts/restore_sql.sh
+        printf '#!/bin/bash\ndocker exec -it postgres_pg_backup_s3_1 sh' >> /opt/scripts/shell_sql.sh
+        chmod +x /opt/scripts/backup_sql.sh >> /opt/scripts/backup_sql.sh
+        chmod +x /opt/scripts/restore_sql.sh >> /opt/scripts/backup_sql.sh
+        chmod +x /opt/scripts/shell_sql.sh >> /opt/scripts/backup_sql.sh
 
         echo "Running docker compose" >> /var/log/setup.log  
         cd /opt/setup/docker_compose_files/postgres
-        docker-compose --env-file .env up & >> /var/log/setup.log  2>&1
+        docker-compose --env-file .env up >> /var/log/setup.log &
 
         echo "Sleeping 60. Waiting for docker." >> /var/log/setup.log  
         sleep 60
         echo "Restoring pokemon-site" >> /var/log/setup.log  
         docker exec postgres_pg_backup_s3_1 sh restore.sh >> /var/log/setup.log    2>&1
         echo "Done restoring pokemon-site" >> /var/log/setup.log  
+
+        git clone https://github.com/TeeWallz/pokemon-card-collection.git /opt/setup/pokemon-card-collection
+        cd /opt/setup/pokemon-card-collection/src/server_mysql
+        docker-compose up >> /var/log/setup.log &
 
 
 
